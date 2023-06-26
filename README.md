@@ -1,4 +1,4 @@
-# 💯 @xxmichas/retry
+# 🔁 @xxmichas/retry
 
 ## 💾 Installation
 
