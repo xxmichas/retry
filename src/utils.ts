@@ -40,6 +40,15 @@ export const checkIfConfigIsValid = (config: Optional<Required<RetryConfig>, "on
 
 type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
 
+type CancelFn = (value: any) => void;
+
+export interface FunctionToRetry<T> {
+  /**
+   * Calling this function rejects the promise with a provided value and stops further retries.
+   */
+  (cancel: CancelFn): Promise<T> | T;
+}
+
 export type RetryConfig = {
   /**
    * Maximum amount of times to retry the operation.
@@ -75,10 +84,25 @@ export type RetryConfig = {
 
   /**
    * Optional callback to execute before each retry.
-   *
-   * @param attempt Current attempt
-   * @param error Value thrown by previous attempt
-   * @param timeout Number of milliseconds until next retry
    */
-  onRetry?: (attempt: number, error: any, timeout: number) => Promise<void> | void;
+  onRetry?: (info: AttemptInfo) => Promise<void> | void;
+};
+
+export type AttemptInfo = {
+  /**
+   * Current attempt.
+   */
+  attempt: number;
+  /**
+   * Value thrown by previous attempt.
+   */
+  error: any;
+  /**
+   * Number of milliseconds until next retry.
+   */
+  timeout: number;
+  /**
+   * Calling this function rejects the promise with a provided value and stops further retries.
+   */
+  cancel: CancelFn;
 };

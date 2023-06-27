@@ -1,14 +1,13 @@
-import { checkIfConfigIsValid, RetryConfig, sleep } from "./utils";
+import { checkIfConfigIsValid, FunctionToRetry, RetryConfig, sleep } from "./utils";
 
 export { RetryConfig } from "./utils";
 
 /**
  * Retries a function until it resolves or the maximum amount of attempts is reached.
+ *
+ * @param fn Function to retry.
  */
-export const retry = async <T>(
-  fn: (cancel: (value: any) => void) => Promise<T> | T,
-  config?: RetryConfig,
-): Promise<T> => {
+export const retry = async <T>(fn: FunctionToRetry<T>, config?: RetryConfig): Promise<T> => {
   if (typeof fn !== "function") {
     throw new TypeError(`First argument must be a function`);
   }
@@ -66,7 +65,8 @@ export const retry = async <T>(
       const timeout = getTimeout(attempt);
 
       if (options.onRetry) {
-        options.onRetry(attempt, error, timeout);
+        // If cancel gets called in onRetry, error will be thrown cancelling further execution
+        await options.onRetry({ attempt, error, timeout, cancel });
       }
 
       await sleep(timeout);

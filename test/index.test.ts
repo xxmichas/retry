@@ -94,7 +94,7 @@ it("shouldn't use jitter", async () => {
         jitter: false,
         minTimeout: 5,
         maxTimeout: 5,
-        onRetry: (attempt, error, timeout) => {
+        onRetry: ({ timeout }) => {
           totalTimeout += timeout;
         },
       },
@@ -162,6 +162,7 @@ it("should pass correct arguments to onRetry", async () => {
   let attempt1 = 0;
   let error1: any;
   let timeout1: number;
+  let cancel1: any;
 
   try {
     await retry(
@@ -173,10 +174,11 @@ it("should pass correct arguments to onRetry", async () => {
       {
         minTimeout: 5,
         maxTimeout: 5,
-        onRetry: (a, e, t) => {
-          attempt1 = a;
-          error1 = e;
-          timeout1 = t;
+        onRetry: ({ attempt, error, timeout, cancel }) => {
+          attempt1 = attempt;
+          error1 = error;
+          timeout1 = timeout;
+          cancel1 = cancel;
         },
       },
     );
@@ -189,10 +191,12 @@ it("should pass correct arguments to onRetry", async () => {
   expect(timeout1).toBeGreaterThanOrEqual(0);
   // @ts-ignore
   expect(timeout1).toBeLessThanOrEqual(5);
+  expect(cancel1).toBeInstanceOf(Function);
 
   let attempt2 = 0;
   let error2: any;
   let timeout2: number;
+  let cancel2: any;
 
   try {
     await retry(
@@ -205,10 +209,11 @@ it("should pass correct arguments to onRetry", async () => {
         minTimeout: 5,
         maxTimeout: 5,
         jitter: false,
-        onRetry: (a, e, t) => {
-          attempt2 = a;
-          error2 = e;
-          timeout2 = t;
+        onRetry: ({ attempt, error, timeout, cancel }) => {
+          attempt2 = attempt;
+          error2 = error;
+          timeout2 = timeout;
+          cancel2 = cancel;
         },
       },
     );
@@ -219,6 +224,35 @@ it("should pass correct arguments to onRetry", async () => {
   expect(error2.message).toBe("9"); // onRetry doesn't run after final attempt
   // @ts-ignore
   expect(timeout2).toBe(5);
+  expect(cancel2).toBeInstanceOf(Function);
+});
+
+it("should cancel in onRetry", async () => {
+  let attempt = 0;
+  let err: any;
+
+  try {
+    await retry(
+      async () => {
+        attempt++;
+
+        throw new Error();
+      },
+      {
+        minTimeout: 5,
+        maxTimeout: 5,
+        onRetry: async ({ cancel }) => {
+          cancel(new Error("cancel"));
+        },
+      },
+    );
+  } catch (error) {
+    err = error;
+  }
+
+  expect(attempt).toBe(1);
+  expect(err).toBeInstanceOf(Error);
+  expect(err.message).toBe("cancel");
 });
 
 describe("config", () => {
